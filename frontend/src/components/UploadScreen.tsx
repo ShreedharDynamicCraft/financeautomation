@@ -1,19 +1,22 @@
-import React, { useState, useCallback } from 'react';
-import { useDropzone } from 'react-dropzone';
+import React, { useState } from 'react';
+import { useDropzone, Accept } from 'react-dropzone';
 import {
   Box,
   Card,
   CardContent,
   Typography,
   Button,
-  ToggleButton,
-  ToggleButtonGroup,
   LinearProgress,
   Alert,
+  Paper,
+  Grid,
 } from '@mui/material';
 import {
   CloudUpload as CloudUploadIcon,
   Description as DescriptionIcon,
+  TrendingUp as TrendingUpIcon,
+  Assessment as AssessmentIcon,
+  CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
@@ -24,24 +27,21 @@ interface UploadScreenProps {
   onJobCreated: (job: Job) => void;
 }
 
-const UploadScreen: React.FC<UploadScreenProps> = ({ onJobCreated }) => {
+const UploadScreen = ({ onJobCreated }: UploadScreenProps) => {
   const [selectedTemplate, setSelectedTemplate] = useState<'Extraction Template 1' | 'Extraction Template 2'>('Extraction Template 1');
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (!file) return;
-
-    // Validate file type
-    if (file.type !== 'application/pdf') {
-      toast.error('Please upload a PDF file only');
+  const onDrop = async (acceptedFiles: File[]) => {
+    if (acceptedFiles.length === 0) {
+      toast.error('Please select a valid PDF file');
       return;
     }
 
-    // Validate file size (50MB limit)
-    if (file.size > 50 * 1024 * 1024) {
-      toast.error('File size must be less than 50MB');
+    const file = acceptedFiles[0];
+
+    if (file.type !== 'application/pdf') {
+      toast.error('Only PDF files are accepted');
       return;
     }
 
@@ -49,227 +49,305 @@ const UploadScreen: React.FC<UploadScreenProps> = ({ onJobCreated }) => {
     setUploadProgress(0);
 
     try {
-      // Simulate upload progress
+      let progress = 0;
       const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return prev + 10;
-        });
+        progress = Math.min(progress + 10, 90);
+        setUploadProgress(progress);
       }, 200);
 
       const response = await uploadFile(file, selectedTemplate);
-      
+
       clearInterval(progressInterval);
       setUploadProgress(100);
 
-      const newJob: Job = {
+      // Convert UploadResponse to Job
+      const job: Job = {
         taskId: response.task_id,
         filename: file.name,
         template: selectedTemplate,
         status: 'processing',
         uploadedAt: new Date(),
+        progress: 0
       };
 
-      onJobCreated(newJob);
-      toast.success('File uploaded successfully! Processing started.');
-      
-      // Reset state
-      setTimeout(() => {
-        setUploadProgress(0);
-        setUploading(false);
-      }, 1000);
+      toast.success('File uploaded successfully!');
+      onJobCreated(job);
+
+      setTimeout(() => setUploadProgress(0), 800); // brief delay to show 100%
 
     } catch (error: any) {
-      console.error('Upload error:', error);
-      setUploadProgress(0);
-      setUploading(false);
       toast.error(error.message || 'Upload failed. Please try again.');
+      setUploadProgress(0);
+    } finally {
+      setUploading(false);
     }
-  }, [selectedTemplate, onJobCreated]);
+  };
+
+  const acceptTypes: Accept = {
+    'application/pdf': ['.pdf']
+  };
 
   const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
     onDrop,
-    accept: {
-      'application/pdf': ['.pdf']
-    },
+    accept: acceptTypes,
     maxFiles: 1,
     disabled: uploading,
   });
 
-  const handleTemplateChange = (event: React.MouseEvent<HTMLElement>, newTemplate: 'Extraction Template 1' | 'Extraction Template 2' | null) => {
-    if (newTemplate !== null) {
-      setSelectedTemplate(newTemplate);
-    }
-  };
-
   return (
-    <Box sx={{ maxWidth: 800, mx: 'auto' }}>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+    <Box sx={{ maxWidth: 1200, mx: 'auto', px: 3 }}>
+   
+
+      {/* Template Selection */}
+      <Card 
+        sx={{ 
+          mb: 4,
+          borderRadius: 9,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
+          background: 'linear-gradient(to bottom, #ffffff 0%, #f8f9fa 100%)',
+          border: '1px solid rgba(30, 60, 114, 0.1)',
+        }}
       >
-        <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ mb: 4 }}>
-          Upload PDF for Data Extraction
-        </Typography>
-
-        {/* Template Selection */}
-        <Card sx={{ mb: 4 }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Select Extraction Template
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Choose the template that best matches your document type
-            </Typography>
-            <ToggleButtonGroup
-              value={selectedTemplate}
-              exclusive
-              onChange={handleTemplateChange}
-              aria-label="extraction template"
-              fullWidth
-              sx={{ mb: 2 }}
-            >
-              <ToggleButton 
-                value="Extraction Template 1" 
-                aria-label="template 1"
-                sx={{ py: 2, flex: 1 }}
-              >
-                <Box sx={{ textAlign: 'center' }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                    Template 1
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Comprehensive Fund Analysis
-                  </Typography>
-                </Box>
-              </ToggleButton>
-              <ToggleButton 
-                value="Extraction Template 2" 
-                aria-label="template 2"
-                sx={{ py: 2, flex: 1 }}
-              >
-                <Box sx={{ textAlign: 'center' }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                    Template 2
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Portfolio Summary Report
-                  </Typography>
-                </Box>
-              </ToggleButton>
-            </ToggleButtonGroup>
-            
-            {selectedTemplate === 'Extraction Template 1' && (
-              <Alert severity="info" sx={{ mt: 2 }}>
-                <strong>Template 1:</strong> Extracts comprehensive fund data including fund details, manager information, and detailed investment positions.
-              </Alert>
-            )}
-            
-            {selectedTemplate === 'Extraction Template 2' && (
-              <Alert severity="info" sx={{ mt: 2 }}>
-                <strong>Template 2:</strong> Focuses on portfolio summary metrics and schedule of investments with key performance indicators.
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* File Upload Area */}
-        <Card>
-          <CardContent>
-            <Box
-              {...getRootProps()}
-              sx={{
-                border: 2,
-                borderColor: isDragActive
-                  ? 'primary.main'
-                  : isDragReject
-                  ? 'error.main'
-                  : 'grey.300',
-                borderStyle: 'dashed',
-                borderRadius: 2,
-                p: 6,
-                textAlign: 'center',
-                cursor: uploading ? 'not-allowed' : 'pointer',
-                backgroundColor: isDragActive
-                  ? 'action.hover'
-                  : isDragReject
-                  ? 'error.light'
-                  : 'background.paper',
-                transition: 'all 0.2s ease-in-out',
-                '&:hover': {
-                  backgroundColor: uploading ? 'background.paper' : 'action.hover',
-                  borderColor: uploading ? 'grey.300' : 'primary.main',
-                },
+        <CardContent sx={{ p: 4 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+            <AssessmentIcon sx={{ fontSize: 32, mr: 2, color: '#1e3c72' }} />
+            <Typography 
+              variant="h5" 
+              sx={{ 
+                fontWeight: 700,
+                background: 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
               }}
             >
-              <input {...getInputProps()} />
-              
-              <motion.div
-                animate={isDragActive ? { scale: 1.05 } : { scale: 1 }}
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              >
-                {uploading ? (
-                  <DescriptionIcon sx={{ fontSize: 64, color: 'primary.main', mb: 2 }} />
-                ) : (
-                  <CloudUploadIcon sx={{ fontSize: 64, color: 'primary.main', mb: 2 }} />
-                )}
-              </motion.div>
+              Choose Your Extraction Template
+            </Typography>
+          </Box>
 
-              {uploading ? (
-                <Box>
-                  <Typography variant="h6" gutterBottom>
-                    Uploading...
-                  </Typography>
+      <Grid container spacing={2}>
+  {/* Template 1 */}
+  <Grid item xs={12} sm={6} md={6}>
+    <Paper
+      elevation={selectedTemplate === 'Extraction Template 1' ? 8 : 2}
+      onClick={() => setSelectedTemplate('Extraction Template 1')}
+      sx={{
+        p: { xs: 2, sm: 3 }, // smaller padding for mobile
+        cursor: uploading ? 'not-allowed' : 'pointer',
+        borderRadius: 2.5,
+        border: selectedTemplate === 'Extraction Template 1' 
+          ? '3px solid #667eea' 
+          : '1.5px solid rgba(0,0,0,0.08)',
+        background: selectedTemplate === 'Extraction Template 1'
+          ? 'linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%)'
+          : 'white',
+        transition: 'all 0.3s ease',
+        position: 'relative',
+        '&:hover': {
+          transform: uploading ? 'none' : 'translateY(-2px)',
+          boxShadow: uploading ? 'none' : '0 8px 16px rgba(102, 126, 234, 0.15)'
+        },
+        textAlign: 'center',
+      }}
+    >
+      {selectedTemplate === 'Extraction Template 1' && (
+        <Box sx={{ position: 'absolute', top: 8, right: 8, backgroundColor: '#667eea', borderRadius: '50%', p: 0.5 }}>
+          <CheckCircleIcon sx={{ color: 'white', fontSize: 20 }} />
+        </Box>
+      )}
+
+      <Box sx={{ width: 50, height: 50, borderRadius: 1.5, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 1.5 }}>
+        <DescriptionIcon sx={{ fontSize: 28, color: 'white' }} />
+      </Box>
+
+      <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 700, color: '#1e3c72' }}>
+        Template 1: Comprehensive
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+        Deep dive into fund data with detailed extraction
+      </Typography>
+    </Paper>
+  </Grid>
+
+  {/* Template 2 */}
+  <Grid item xs={12} sm={6} md={6}>
+    <Paper
+      elevation={selectedTemplate === 'Extraction Template 2' ? 8 : 2}
+      onClick={() => setSelectedTemplate('Extraction Template 2')}
+      sx={{
+        p: { xs: 2, sm: 3 },
+        cursor: uploading ? 'not-allowed' : 'pointer',
+        borderRadius: 2.5,
+        border: selectedTemplate === 'Extraction Template 2' 
+          ? '3px solid #f5576c' 
+          : '1.5px solid rgba(0,0,0,0.08)',
+        background: selectedTemplate === 'Extraction Template 2'
+          ? 'linear-gradient(135deg, rgba(240, 147, 251, 0.08) 0%, rgba(245, 87, 108, 0.08) 100%)'
+          : 'white',
+        transition: 'all 0.3s ease',
+        position: 'relative',
+        '&:hover': {
+          transform: uploading ? 'none' : 'translateY(-2px)',
+          boxShadow: uploading ? 'none' : '0 8px 16px rgba(245, 87, 108, 0.15)'
+        },
+        textAlign: 'center',
+      }}
+    >
+      {selectedTemplate === 'Extraction Template 2' && (
+        <Box sx={{ position: 'absolute', top: 8, right: 8, backgroundColor: '#f5576c', borderRadius: '50%', p: 0.5 }}>
+          <CheckCircleIcon sx={{ color: 'white', fontSize: 20 }} />
+        </Box>
+      )}
+
+      <Box sx={{ width: 50, height: 50, borderRadius: 1.5, background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 1.5 }}>
+        <TrendingUpIcon sx={{ fontSize: 28, color: 'white' }} />
+      </Box>
+
+      <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 700, color: '#1e3c72' }}>
+        Template 2: Performance
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+        Portfolio-centric analysis with KPIs
+      </Typography>
+    </Paper>
+  </Grid>
+</Grid>
+
+
+
+
+
+        </CardContent>
+      </Card>
+
+      {/* Premium Upload Area */}
+      <Card
+        sx={{
+          borderRadius: 9,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
+          border: '1px solid rgba(30, 60, 114, 0.1)',
+        }}
+      >
+        <CardContent sx={{ p: 4 }}>
+          <Box
+            {...getRootProps()}
+            sx={{
+              border: 3,
+              borderColor: isDragActive
+                ? '#667eea'
+                : isDragReject
+                ? '#f5576c'
+                : 'rgba(30, 60, 114, 0.2)',
+              borderStyle: 'dashed',
+              borderRadius: 4,
+              p: 8,
+              textAlign: 'center',
+              cursor: uploading ? 'not-allowed' : 'pointer',
+              background: isDragActive
+                ? 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)'
+                : isDragReject
+                ? 'linear-gradient(135deg, rgba(245, 87, 108, 0.1) 0%, rgba(240, 147, 251, 0.1) 100%)'
+                : 'linear-gradient(to bottom, #ffffff 0%, #f8f9fa 100%)',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                backgroundColor: uploading ? 'transparent' : 'rgba(102, 126, 234, 0.05)',
+                borderColor: uploading ? 'rgba(30, 60, 114, 0.2)' : '#667eea',
+                transform: uploading ? 'none' : 'translateY(-2px)',
+              },
+            }}
+          >
+            <input {...getInputProps()} />
+            
+            <motion.div
+              animate={uploading ? { rotate: 360 } : { rotate: 0 }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            >
+              <DescriptionIcon sx={{ fontSize: 80, color: '#1e3c72', mb: 3 }} />
+            </motion.div>
+
+            {uploading ? (
+              <>
+                <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, color: '#1e3c72' }}>
+                  Processing Your Document...
+                </Typography>
+                <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                  AI is extracting data with precision
+                </Typography>
+                <Box sx={{ maxWidth: 400, mx: 'auto' }}>
                   <LinearProgress 
                     variant="determinate" 
-                    value={uploadProgress} 
-                    sx={{ 
-                      mt: 2, 
-                      mb: 2,
-                      height: 8,
-                      borderRadius: 4,
-                    }} 
+                    value={uploadProgress}
+                    sx={{
+                      height: 10,
+                      borderRadius: 5,
+                      backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                      '& .MuiLinearProgress-bar': {
+                        background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
+                        borderRadius: 5,
+                      }
+                    }}
                   />
-                  <Typography variant="body2" color="text.secondary">
-                    {uploadProgress}% complete
+                  <Typography variant="body2" sx={{ mt: 1, color: '#667eea', fontWeight: 600 }}>
+                    {uploadProgress}% Complete
                   </Typography>
                 </Box>
-              ) : (
-                <Box>
-                  <Typography variant="h6" gutterBottom>
-                    {isDragActive
-                      ? 'Drop your PDF file here'
-                      : 'Drag & drop a PDF file here, or click to select'}
+              </>
+            ) : (
+              <>
+                {isDragActive ? (
+                  <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, color: '#667eea' }}>
+                    Drop your PDF here
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                    Supports PDF files up to 50MB
-                  </Typography>
-                  
-                  {isDragReject && (
-                    <Typography variant="body2" color="error" sx={{ mb: 2 }}>
-                      Only PDF files are accepted
+                ) : (
+                  <>
+                    <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, color: '#1e3c72' }}>
+                      Drag & Drop Your PDF
                     </Typography>
-                  )}
+                    <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                      or click to browse from your computer
+                    </Typography>
+                    <Button
+                      variant="contained"
+                      size="large"
+                      startIcon={<CloudUploadIcon />}
+                      sx={{
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        color: 'white',
+                        px: 5,
+                        py: 1.5,
+                        borderRadius: 3,
+                        fontSize: '1.1rem',
+                        fontWeight: 700,
+                        textTransform: 'none',
+                        boxShadow: '0 8px 16px rgba(102, 126, 234, 0.3)',
+                        '&:hover': {
+                          background: 'linear-gradient(135deg, #764ba2 0%, #667eea 100%)',
+                          boxShadow: '0 12px 24px rgba(102, 126, 234, 0.4)',
+                          transform: 'translateY(-2px)',
+                        },
+                        transition: 'all 0.3s ease',
+                      }}
+                    >
+                      Select PDF File
+                    </Button>
+                  </>
+                )}
 
-                  <Button
-                    variant="contained"
-                    size="large"
-                    startIcon={<CloudUploadIcon />}
-                    disabled={uploading}
-                    sx={{ mt: 2 }}
-                  >
-                    Choose File
-                  </Button>
+                <Box sx={{ mt: 4, pt: 3, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Supported format: PDF • Maximum file size: 50MB
+                  </Typography>
                 </Box>
-              )}
-            </Box>
-          </CardContent>
-        </Card>
-      </motion.div>
+              </>
+            )}
+          </Box>
+
+          {isDragReject && (
+            <Alert severity="error" sx={{ mt: 3, borderRadius: 2 }}>
+              Invalid file type. Please upload a PDF file only.
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
     </Box>
   );
 };

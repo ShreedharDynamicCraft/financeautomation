@@ -22,7 +22,8 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "build:production": "REACT_APP_API_URL=$REACT_APP_API_URL react-scripts build"
   },
   "eslintConfig": {
     "extends": [

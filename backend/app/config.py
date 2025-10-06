@@ -1,7 +1,9 @@
 import os
 import logging
-from typing import Optional
+import json
+from typing import Optional, List
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 
 class Settings(BaseSettings):
     # App settings
@@ -14,13 +16,22 @@ class Settings(BaseSettings):
     port: int = 8000
     reload: bool = True
     
-    # CORS settings
-    cors_origins: list[str] = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001",
-    ]
+    # CORS settings - Allow all origins by default, can be customized via env
+    cors_origins: List[str] = ["*"]
+    
+    @field_validator('cors_origins', mode='before')
+    @classmethod
+    def parse_cors_origins(cls, v):
+        if isinstance(v, str):
+            if v == "*":
+                return ["*"]
+            try:
+                # Try to parse as JSON array
+                return json.loads(v)
+            except json.JSONDecodeError:
+                # If not JSON, split by comma
+                return [origin.strip() for origin in v.split(',')]
+        return v
     
     # Google Gemini API
     google_api_key: str = ""  # Set this in .env file

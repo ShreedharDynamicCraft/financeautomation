@@ -1,7 +1,11 @@
 import axios from 'axios';
 import { UploadResponse, StatusResponse, ApiError } from '../types';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+import axios from 'axios';
+import { UploadResponse, Job, JobStatus } from '../types';
+
+// Use environment variable for API URL, fallback to localhost for development
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
