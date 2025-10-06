@@ -30,7 +30,7 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ jobs, onJobUpdate }) => {
-  const handleDownload = async (job: Job) => {
+  const handleDownload = async (job: Job): Promise<void> => {
     if (!job.downloadUrl) {
       toast.error('Download URL not available');
       return;
@@ -54,7 +54,7 @@ const Dashboard: React.FC<DashboardProps> = ({ jobs, onJobUpdate }) => {
     }
   };
 
-  const handleRefreshStatus = async (job: Job) => {
+  const handleRefreshStatus = async (job: Job): Promise<void> => {
     try {
       const data = await getJobStatus(job.taskId);
       onJobUpdate(job.taskId, {
@@ -83,7 +83,7 @@ const Dashboard: React.FC<DashboardProps> = ({ jobs, onJobUpdate }) => {
     }
   };
 
-  const getStatusColor = (status: Job['status']) => {
+  const getStatusColor = (status: Job['status']): 'success' | 'error' | 'primary' | 'default' => {
     switch (status) {
       case 'completed':
         return 'success';
@@ -96,14 +96,19 @@ const Dashboard: React.FC<DashboardProps> = ({ jobs, onJobUpdate }) => {
     }
   };
 
-  const formatTime = (date: Date) => {
-    return new Intl.DateTimeFormat('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(date);
+  const formatTime = (date: Date): string => {
+    try {
+      return new Intl.DateTimeFormat('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(date);
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Invalid date';
+    }
   };
 
   if (jobs.length === 0) {
@@ -127,7 +132,7 @@ const Dashboard: React.FC<DashboardProps> = ({ jobs, onJobUpdate }) => {
       </Typography>
 
       <Grid container spacing={3}>
-        <AnimatePresence>
+        <AnimatePresence mode="wait">
           {jobs.map((job, index) => (
             <Grid item xs={12} md={6} lg={4} key={job.taskId}>
               <motion.div
@@ -175,7 +180,7 @@ const Dashboard: React.FC<DashboardProps> = ({ jobs, onJobUpdate }) => {
                         {getStatusIcon(job.status)}
                         <Chip
                           label={job.status.charAt(0).toUpperCase() + job.status.slice(1)}
-                          color={getStatusColor(job.status) as any}
+                          color={getStatusColor(job.status)}
                           size="small"
                           sx={{ fontWeight: 500 }}
                         />
@@ -213,7 +218,7 @@ const Dashboard: React.FC<DashboardProps> = ({ jobs, onJobUpdate }) => {
                     {/* Timestamps */}
                     <Box sx={{ mb: 2 }}>
                       <Typography variant="caption" color="text.secondary" display="block">
-                        Uploaded: {formatTime(job.uploadedAt)}
+                        Uploaded: {job.uploadedAt ? formatTime(job.uploadedAt) : 'Unknown'}
                       </Typography>
                       {job.completedAt && (
                         <Typography variant="caption" color="text.secondary" display="block">

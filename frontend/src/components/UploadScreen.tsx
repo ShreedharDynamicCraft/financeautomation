@@ -27,12 +27,12 @@ interface UploadScreenProps {
   onJobCreated: (job: Job) => void;
 }
 
-const UploadScreen = ({ onJobCreated }: UploadScreenProps) => {
+const UploadScreen: React.FC<UploadScreenProps> = ({ onJobCreated }) => {
   const [selectedTemplate, setSelectedTemplate] = useState<'Extraction Template 1' | 'Extraction Template 2'>('Extraction Template 1');
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  const onDrop = async (acceptedFiles: File[]) => {
+  const onDrop = async (acceptedFiles: File[]): Promise<void> => {
     if (acceptedFiles.length === 0) {
       toast.error('Please select a valid PDF file');
       return;

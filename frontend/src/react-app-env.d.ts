@@ -1,5 +1,18 @@
-/// <reference types="react" />
-/// <reference types="react-dom" />
+/// <reference types="react-scripts" />
+
+// CSS Modules
+declare module '*.css' {
+  const content: { [className: string]: string };
+  export default content;
+}
+
+declare module '*.scss' {
+  const content: { [className: string]: string };
+  export default content;
+}
+
+// Side-effect imports for CSS files
+declare module 'react-toastify/dist/ReactToastify.css';
 
 declare module 'framer-motion' {
   import * as React from 'react';
