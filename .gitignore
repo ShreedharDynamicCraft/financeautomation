@@ -1,0 +1,61 @@
+# Root level .gitignore for PDF Extraction Project
+
+# Environment variables (keep templates)
+.env
+!.env.template
+!.env.example
+
+# Dependencies
+node_modules/
+venv/
+env/
+
+# Build outputs
+build/
+dist/
+*.egg-info/
+
+# Logs
+*.log
+logs/
+
+# Cache directories
+.cache/
+__pycache__/
+.pytest_cache/
+.eslintcache
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Application specific
+uploads/
+outputs/
+*.tmp
+*.bak
+
+# Development database files
+*.db
+*.sqlite3
+
+# Coverage reports
+coverage/
+htmlcov/
+.coverage
+
+# Docker (commented out since we removed Docker)
+# Dockerfile
+# docker-compose*.yml
+
+# Git specific
+.git/
+.gitattributes
