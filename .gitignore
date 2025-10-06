@@ -59,3 +59,4 @@ htmlcov/
 # Git specific
 .git/
 .gitattributes
+.vercel
