@@ -1,8 +1,10 @@
+export type JobStatus = 'processing' | 'completed' | 'failed';
+
 export interface Job {
   taskId: string;
   filename: string;
   template: 'Extraction Template 1' | 'Extraction Template 2';
-  status: 'processing' | 'completed' | 'failed';
+  status: JobStatus;
   uploadedAt: Date;
   completedAt?: Date;
   downloadUrl?: string;
@@ -17,7 +19,7 @@ export interface UploadResponse {
 
 export interface StatusResponse {
   task_id: string;
-  status: 'processing' | 'completed' | 'failed';
+  status: JobStatus;
   download_url?: string;
   error?: string;
   progress?: number;

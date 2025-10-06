@@ -38,6 +38,7 @@ pyvenv.cfg
 .env.development
 .env.production
 .env.test
+.env.template
 
 # IDE and Editor files
 .vscode/
