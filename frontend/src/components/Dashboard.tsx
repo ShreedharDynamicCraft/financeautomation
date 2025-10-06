@@ -21,6 +21,7 @@ import {
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
+import { getJobStatus, downloadFile } from '../services/api';
 import { Job } from '../types';
 
 interface DashboardProps {
@@ -36,10 +37,7 @@ const Dashboard: React.FC<DashboardProps> = ({ jobs, onJobUpdate }) => {
     }
 
     try {
-      const response = await fetch(job.downloadUrl);
-      if (!response.ok) throw new Error('Download failed');
-      
-      const blob = await response.blob();
+      const blob = await downloadFile(job.downloadUrl);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -58,17 +56,14 @@ const Dashboard: React.FC<DashboardProps> = ({ jobs, onJobUpdate }) => {
 
   const handleRefreshStatus = async (job: Job) => {
     try {
-      const response = await fetch(`/api/status/${job.taskId}`);
-      if (response.ok) {
-        const data = await response.json();
-        onJobUpdate(job.taskId, {
-          status: data.status,
-          downloadUrl: data.download_url,
-          error: data.error,
-          progress: data.progress,
-        });
-        toast.info('Status refreshed');
-      }
+      const data = await getJobStatus(job.taskId);
+      onJobUpdate(job.taskId, {
+        status: data.status,
+        downloadUrl: data.download_url,
+        error: data.error,
+        progress: data.progress,
+      });
+      toast.info('Status refreshed');
     } catch (error) {
       console.error('Error refreshing status:', error);
       toast.error('Failed to refresh status');

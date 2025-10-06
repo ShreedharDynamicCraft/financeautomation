@@ -11,6 +11,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import UploadScreen from './components/UploadScreen';
 import Dashboard from './components/Dashboard';
+import { getJobStatus } from './services/api';
 import { Job } from './types';
 
 interface TabPanelProps {
@@ -64,15 +65,13 @@ const App: React.FC = () => {
       
       processingJobs.forEach(async (job) => {
         try {
-          const response = await fetch(`/api/status/${job.taskId}`);
-          if (response.ok) {
-            const data = await response.json();
-            updateJob(job.taskId, {
-              status: data.status,
-              downloadUrl: data.download_url,
-              error: data.error,
-            });
-          }
+          const data = await getJobStatus(job.taskId);
+          updateJob(job.taskId, {
+            status: data.status,
+            downloadUrl: data.download_url,
+            error: data.error,
+            progress: data.progress,
+          });
         } catch (error) {
           console.error('Error polling job status:', error);
         }

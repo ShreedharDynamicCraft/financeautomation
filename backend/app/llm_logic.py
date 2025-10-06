@@ -79,13 +79,15 @@ def extract_text_from_pdf(file_path: str) -> str:
         logger.error(f"PDF text extraction failed: {e}")
         raise
 
-def get_data_from_llm(pdf_text: str, template_type: str) -> dict:
+def get_data_from_llm(pdf_text: str, template_type: str, max_retries: int = 3) -> dict:
     """
     Calls the Gemini API with the correct, high-fidelity master prompt.
+    Includes a retry mechanism for JSON parsing errors.
     
     Args:
         pdf_text: Extracted text from PDF
         template_type: Template type ("Extraction Template 1" or "Extraction Template 2")
+        max_retries: Maximum number of retries for JSON parsing
         
     Returns:
         Extracted data as dictionary
@@ -93,49 +95,63 @@ def get_data_from_llm(pdf_text: str, template_type: str) -> dict:
     if not settings.google_api_key:
         raise ValueError("Google API key not configured")
     
-    try:
-        # Use the recommended model
-        model = genai.GenerativeModel(settings.gemini_model)
+    model = genai.GenerativeModel(settings.gemini_model)
+    
+    generation_config = genai.GenerationConfig(
+        response_mime_type="application/json",
+        temperature=0.1,
+        max_output_tokens=8192,
+    )
 
-        # Configure generation parameters with JSON output enforcement
-        generation_config = genai.GenerationConfig(
-            response_mime_type="application/json",
-            temperature=0.1,  # Low temperature for consistent results
-            max_output_tokens=8192,
-        )
+    prompt = build_master_prompt(pdf_text, template_type)
 
-        # Build the prompt dynamically based on user selection
-        prompt = build_master_prompt(pdf_text, template_type)
-        
-        logger.info(f"Sending request to Gemini with {len(prompt)} characters")
-        
-        response = model.generate_content(
-            prompt,
-            generation_config=generation_config
-        )
-        
-        if not response.text:
-            raise ValueError("Empty response from Gemini API")
-        
-        logger.info(f"Received response from Gemini: {len(response.text)} characters")
-        
-        # Parse JSON response
-        extracted_data = json.loads(response.text)
-        
-        # Validate the response structure
-        if not isinstance(extracted_data, dict):
-            raise ValueError("Invalid response format: expected JSON object")
-        
-        logger.info(f"Successfully parsed JSON with {len(extracted_data)} keys")
-        return extracted_data
-        
-    except json.JSONDecodeError as e:
-        logger.error(f"JSON parsing error: {e}")
-        logger.error(f"Raw response: {response.text[:500]}...")
-        raise ValueError(f"Failed to parse JSON response: {e}")
-    except Exception as e:
-        logger.error(f"LLM processing failed: {e}")
-        raise
+    for attempt in range(max_retries):
+        try:
+            logger.info(f"Sending request to Gemini with {len(prompt)} characters (Attempt {attempt + 1}/{max_retries})")
+            
+            response = model.generate_content(
+                prompt,
+                generation_config=generation_config
+            )
+            
+            if not response.text:
+                raise ValueError("Empty response from Gemini API")
+
+            logger.info(f"Received response from Gemini: {len(response.text)} characters")
+            
+            # Attempt to parse the JSON
+            parsed_json = json.loads(response.text)
+            
+            if not isinstance(parsed_json, dict):
+                raise ValueError("Invalid response format: expected JSON object")
+
+            logger.info(f"Successfully parsed JSON with {len(parsed_json)} keys")
+            return parsed_json
+
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON parsing error on attempt {attempt + 1}: {e}")
+            logger.error(f"Raw response: {response.text[:500]}...")
+            
+            if attempt < max_retries - 1:
+                logger.info("Retrying with a request to fix the JSON...")
+                # Ask the model to fix the broken JSON
+                prompt = f"""The following text is not valid JSON. Please fix it and return only the corrected, valid JSON object. Do not add any commentary or explanations.
+
+Broken JSON:
+```json
+{response.text}
+```
+
+Corrected JSON:
+"""
+            else:
+                logger.error("Max retries reached. Failed to parse JSON response.")
+                raise ValueError(f"Failed to parse JSON response: {e}")
+        except Exception as e:
+            logger.error(f"An unexpected error occurred during Gemini API call on attempt {attempt + 1}: {e}")
+            raise
+
+    raise ValueError("Failed to get a valid JSON response from the LLM after multiple retries.")
 
 def build_master_prompt(pdf_text: str, template_type: str) -> str:
     """

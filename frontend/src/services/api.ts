@@ -1,8 +1,8 @@
 import axios from 'axios';
-import { UploadResponse, StatusResponse, ApiError, Job, JobStatus } from '../types';
+import { UploadResponse, StatusResponse } from '../types';
 
 // Use environment variable for API URL, fallback to localhost for development
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -81,7 +81,9 @@ export const getJobStatus = async (taskId: string): Promise<StatusResponse> => {
 
 export const downloadFile = async (downloadUrl: string): Promise<Blob> => {
   try {
-    const response = await api.get(downloadUrl, {
+    // Use the API base URL if downloadUrl is relative
+    const fullUrl = downloadUrl.startsWith('http') ? downloadUrl : `${API_BASE_URL}${downloadUrl}`;
+    const response = await axios.get(fullUrl, {
       responseType: 'blob',
     });
     return response.data;
