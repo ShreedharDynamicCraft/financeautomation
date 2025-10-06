@@ -6,7 +6,7 @@ const API_BASE_URL = process.env.REACT_APP_API_URL;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000, // 30 seconds
+  timeout: 120000, // 2 minutes for better handling of AI processing
 });
 
 // Request interceptor for logging
@@ -60,6 +60,7 @@ export const uploadFile = async (
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      timeout: 180000, // 3 minutes for file upload and AI processing
     });
     
     return response.data;
